@@ -147,7 +147,7 @@ public class AuthController {
     }
 	@GetMapping("/{name}")
     public String name(@PathVariable ("name") String name) {
-         return "Hi"+name+"Welcome AWS ECR";
+         return "Hi "+name+" Welcome AWS ECR";
     }
 	@GetMapping("/findByUserName/{username}")
     public Optional<User> findByUsername(@PathVariable ("username") String username) {
