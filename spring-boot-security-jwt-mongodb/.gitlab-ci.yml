@@ -5,6 +5,7 @@ variables:
   REGION: ap-south-1
   TASK_DEFINTION_NAME: fileshare-springboot:4
   CLUSTER_NAME: fileshare-aws-ecs-cluster
+  SERVICE_NAME: fileshare-service
   
 
 services:
