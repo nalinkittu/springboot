@@ -1,6 +1,47 @@
+image: docker:latest
+
+variables:
+  REPOSITORY_URL: 501801247124.dkr.ecr.ap-south-1.amazonaws.com/filesharing-repo
+  REGION: ap-south-1
+  TASK_DEFINTION_NAME: fileshare-springboot:4
+  CLUSTER_NAME: fileshare-aws-ecs-cluster
+  
+
+services:
+- docker:dind
+
+before_script:
+  - apk add --no-cache curl jq python py-pip
+  - pip install awscli
+  - $(aws ecr get-login --no-include-email --region "${REGION}")
+  - IMAGE_TAG="$(echo $CI_COMMIT_SHA | head -c 8)"
+
+stages:
+  - build
+  - deploy
+
+build:
+  stage: build
+  script:
+    - echo "Building image..."
+    - docker build -t $REPOSITORY_URL:latest .
+    - echo "Tagging image..."
+    - docker tag $REPOSITORY_URL:latest $REPOSITORY_URL:$IMAGE_TAG
+    - echo "Pushing image..."
+    - docker push $REPOSITORY_URL:latest
+    - docker push $REPOSITORY_URL:$IMAGE_TAG
+  only:
+    - master
+
 deploy:
   stage: deploy
-  image: 501801247124.dkr.ecr.ap-south-1.amazonaws.com/filesharing-repo  # see the note below
   script:
-    - aws s3 ...
-    - aws create-deployment ...
+    - echo $REPOSITORY_URL:$IMAGE_TAG
+    - TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition "$TASK_DEFINTION_NAME" --region "${REGION}")
+    - NEW_CONTAINER_DEFINTIION=$(echo $TASK_DEFINITION | python $CI_PROJECT_DIR/update_task_definition_image.py $REPOSITORY_URL:$IMAGE_TAG)
+    - echo "Registering new container definition..."
+    - aws ecs register-task-definition --region "${REGION}" --family "${TASK_DEFINTION_NAME}" --container-definitions "${NEW_CONTAINER_DEFINTIION}"
+    - echo "Updating the service..."
+    - aws ecs update-service --region "${REGION}" --cluster "${CLUSTER_NAME}" --service "${SERVICE_NAME}"  --task-definition "${TASK_DEFINTION_NAME}"
+  only:
+    - master
