@@ -1,48 +1,55 @@
-image: docker:latest
-
+image: maven:3.6.3-openjdk-8
+ 
 variables:
-  REPOSITORY_URL: 501801247124.dkr.ecr.ap-south-1.amazonaws.com/filesharing-repo
-  REGION: ap-south-1
-  TASK_DEFINTION_NAME: fileshare-springboot:4
-  CLUSTER_NAME: fileshare-aws-ecs-cluster
-  SERVICE_NAME: fileshare-service
-  
-
-services:
-- docker:dind
-
+  MAVEN_OPTS: >-
+    -Dmaven.repo.local=.m2/repository
+    -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN
+    -Dorg.slf4j.simpleLogger.showDateTime=true -Djava.awt.headless=true
+  MAVEN_CLI_OPTS: >-
+    --batch-mode --errors --fail-at-end --show-version -DinstallAtEnd=true
+    -DdeployAtEnd=true
+  CI_AWS_ECS_CLUSTER: fileshare-aws-ecs-cluster
+  CI_AWS_ECS_SERVICE: fileshare-service
+  CI_AWS_REGISTRY_IMG: 501801247124.dkr.ecr.ap-south-1.amazonaws.com/filesharing-repo
+ 
 before_script:
-  - apk add --no-cache curl jq python py-pip
-  - pip install awscli
-  - $(aws ecr get-login --no-include-email --region "${REGION}")
-  - IMAGE_TAG="$(echo $CI_COMMIT_SHA | head -c 8)"
-
+  - >-
+    echo " ------------------------------- Global > Before Script
+    ------------------------- ------"
+  - echo $CI_COMMIT_BRANCH
+ 
 stages:
+  - compile
   - build
   - deploy
-
-build:
+ 
+kaniko-build-docker:
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
   stage: build
-  script:
-    - echo "Building image..."
-    - docker build -t $REPOSITORY_URL:latest .
-    - echo "Tagging image..."
-    - docker tag $REPOSITORY_URL:latest $REPOSITORY_URL:$IMAGE_TAG
-    - echo "Pushing image..."
-    - docker push $REPOSITORY_URL:latest
-    - docker push $REPOSITORY_URL:$IMAGE_TAG
+  variables:
+    REGISTRY: $CI_AWS_REGISTRY_IMG
+  before_script:
+    - ls -la
   only:
     - master
-
+  script:
+    # see https://github.com/GoogleContainerTools/kaniko/issues/1227
+    - mkdir -p /kaniko/.docker
+    - echo "{\"credsStore\":\"ecr-login\"}" > /kaniko/.docker/config.json
+    - /kaniko/executor --cache=true --context $CI_PROJECT_DIR --dockerfile ${CI_PROJECT_DIR}/Dockerfile --destination $REGISTRY:$CI_COMMIT_SHORT_SHA --destination $REGISTRY:latest
+ 
 deploy:
+  image: python:3.8
   stage: deploy
-  script:
-    - echo $REPOSITORY_URL:$IMAGE_TAG
-    - TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition "$TASK_DEFINTION_NAME" --region "${REGION}")
-    - NEW_CONTAINER_DEFINTIION=$(echo $TASK_DEFINITION | python $CI_PROJECT_DIR/update_task_definition_image.py $REPOSITORY_URL:$IMAGE_TAG)
-    - echo "Registering new container definition..."
-    - aws ecs register-task-definition --region "${REGION}" --family "${TASK_DEFINTION_NAME}" --container-definitions "${NEW_CONTAINER_DEFINTIION}"
-    - echo "Updating the service..."
-    - aws ecs update-service --region "${REGION}" --cluster "${CLUSTER_NAME}" --service "${SERVICE_NAME}"  --task-definition "${TASK_DEFINTION_NAME}"
   only:
     - master
+  before_script:
+    - pip install ecs-deploy
+  needs:
+    - kaniko-build-docker
+  script:
+    - ecs deploy $CI_AWS_ECS_CLUSTER $CI_AWS_ECS_SERVICE -t $CI_COMMIT_SHORT_SHA --timeout 600
+ 
+                
