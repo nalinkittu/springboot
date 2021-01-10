@@ -105,33 +105,34 @@ public class AuthController {
 
 		Set<String> strRoles = signUpRequest.getRoles();
 		Set<Role> roles = new HashSet<>();
-
-		if (strRoles == null) {
-			Role userRole = roleRepository.findByName(ERole.ROLE_USER)
-					.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-			roles.add(userRole);
-		} else {
-			strRoles.forEach(role -> {
-				switch (role) {
-				case "admin":
-					Role adminRole = roleRepository.findByName(ERole.ROLE_ADMIN)
-							.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-					roles.add(adminRole);
-
-					break;
-				case "mod":
-					Role modRole = roleRepository.findByName(ERole.ROLE_MODERATOR)
-							.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-					roles.add(modRole);
-
-					break;
-				default:
-					Role userRole = roleRepository.findByName(ERole.ROLE_USER)
-							.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-					roles.add(userRole);
-				}
-			});
-		}
+		//roles.add(ERole.ROLE_ADMIN);
+//		if (strRoles == null) {
+//			Role userRole = roleRepository.findByName(ERole.ROLE_USER)
+//					.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+//			roles.add(userRole);
+//		} 
+//		else {
+//			strRoles.forEach(role -> {
+//				switch (role) {
+//				case "admin":
+//					Role adminRole = roleRepository.findByName(ERole.ROLE_ADMIN)
+//							.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+//					roles.add(adminRole);
+//
+//					break;
+//				case "mod":
+//					Role modRole = roleRepository.findByName(ERole.ROLE_MODERATOR)
+//							.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+//					roles.add(modRole);
+//
+//					break;
+//				default:
+//					Role userRole = roleRepository.findByName(ERole.ROLE_USER)
+//							.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+//					roles.add(userRole);
+//				}
+//			});
+//		}
 		user.setUsedStorage(new BigDecimal(0.0));
 		user.setIsActive(1);
 		user.setCreatedAt(LocalDate.now());
@@ -147,7 +148,7 @@ public class AuthController {
     }
 	@GetMapping("/{name}")
     public String name(@PathVariable ("name") String name) {
-         return "Hi "+name+" Welcome AWS ECR";
+         return "Hi "+name+" Welcome AWS ECR CI/CD";
     }
 	@GetMapping("/findByUserName/{username}")
     public Optional<User> findByUsername(@PathVariable ("username") String username) {
