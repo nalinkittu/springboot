@@ -3,7 +3,7 @@ image: docker:latest
 variables:
   REGION: ap-south-1
 
-  REPOSITORY_URL: 501801247124.dkr.ecr.ap-south-1.amazonaws.com/filesharing-repo
+  REPOSITORY_URL: 501801247124.dkr.ecr.ap-south-1.amazonaws.com
   REPOSITORY_NAME: filesharing-repo
 
   UAT_CLUSTER_NAME: fileshare-aws-ecs-cluster
